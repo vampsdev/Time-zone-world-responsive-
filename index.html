@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🌍 Fusos Horários do Mundo</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+/* ===== LIGHT THEME (default) ===== */
+[data-theme="light"] {
+  --bg: #f0f4f8;
+  --nav-bg: rgba(255,255,255,0.97);
+  --card: #ffffff;
+  --card-hover: #f0f7ff;
+  --accent: #1a73e8;
+  --accent3: #059669;
+  --text: #1e293b;
+  --text2: #334155;
+  --muted: #64748b;
+  --border: #e2e8f0;
+  --border-accent: rgba(26,115,232,0.3);
+  --shadow: 0 2px 12px rgba(0,0,0,0.08);
+  --glow: 0 4px 20px rgba(26,115,232,0.18);
+  --clock-bg: #f8fafc;
+  --clock-border: #e2e8f0;
+  --clock-face: #f8fafc;
+  --header-bg: linear-gradient(180deg,#e8f0fe 0%,#f0f4f8 100%);
+  --modal-bg: #ffffff;
+  --modal-weather-bg: #f8fafc;
+  --theme-btn-bg: #1e293b;
+  --theme-btn-color: #fff;
+  --theme-btn-label: "🌙 Tema Escuro";
+  --offset-color: #3b82f6;
+  --map-ctrl-bg: #fff;
+  --map-ctrl-border: #e2e8f0;
+  --footer-bg: #fff;
+  --search-bg: #fff;
+}
+/* ===== DARK THEME ===== */
+[data-theme="dark"] {
+  --bg: #050d1a;
+  --nav-bg: rgba(5,13,26,0.97);
+  --card: #0f1f35;
+  --card-hover: #162844;
+  --accent: #00d4ff;
+  --accent3: #10b981;
+  --text: #e2e8f0;
+  --text2: #cbd5e1;
+  --muted: #64748b;
+  --border: rgba(0,212,255,0.15);
+  --border-accent: rgba(0,212,255,0.4);
+  --shadow: 0 2px 12px rgba(0,0,0,0.4);
+  --glow: 0 0 20px rgba(0,212,255,0.25);
+  --clock-bg: rgba(0,0,0,0.35);
+  --clock-border: rgba(0,212,255,0.12);
+  --clock-face: #07111f;
+  --header-bg: linear-gradient(180deg,rgba(0,212,255,0.06) 0%,#050d1a 100%);
+  --modal-bg: #0f1f35;
+  --modal-weather-bg: rgba(0,0,0,0.3);
+  --theme-btn-bg: #e2e8f0;
+  --theme-btn-color: #1e293b;
+  --theme-btn-label: "☀️ Tema Claro";
+  --offset-color: rgba(0,212,255,0.6);
+  --map-ctrl-bg: #0f1f35;
+  --map-ctrl-border: rgba(0,212,255,0.2);
+  --footer-bg: #0a1628;
+  --search-bg: #0f1f35;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Space Grotesk', sans-serif;
+  min-height: 100vh;
+  transition: background 0.3s, color 0.3s;
+}
+
+/* HEADER */
+header {
+  text-align: center;
+  padding: 2.2rem 1rem 1.4rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--header-bg);
+  position: relative;
+}
+header h1 {
+  font-size: clamp(1.7rem,4vw,3rem);
+  font-weight: 700;
+  letter-spacing: -1px;
+  background: linear-gradient(135deg, var(--accent), #7c3aed);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+header p { color: var(--muted); font-size:.95rem; margin-top:.35rem; }
+#utc-master {
+  display: inline-block;
+  margin-top:.7rem;
+  background: var(--clock-bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: .35rem 1.1rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .85rem;
+  color: var(--accent);
+}
+#theme-toggle {
+  position: absolute;
+  top: 1.2rem; right: 1.2rem;
+  background: var(--theme-btn-bg);
+  color: var(--theme-btn-color);
+  border: none;
+  border-radius: 999px;
+  padding: .45rem 1rem;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: .8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .2s;
+  white-space: nowrap;
+  box-shadow: var(--shadow);
+}
+#theme-toggle:hover { opacity:.85; transform:scale(1.04); }
+
+/* SEARCH */
+.search-bar {
+  position: relative;
+  max-width: 460px;
+  margin: 1rem auto 0;
+}
+.search-bar input {
+  width: 100%;
+  background: var(--search-bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: .6rem 1.2rem .6rem 2.7rem;
+  color: var(--text);
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: .88rem;
+  outline: none;
+  transition: border-color .2s, box-shadow .2s;
+  box-shadow: var(--shadow);
+}
+.search-bar input:focus { border-color: var(--accent); box-shadow: var(--glow); }
+.search-bar input::placeholder { color: var(--muted); }
+.search-icon {
+  position: absolute; left:.95rem; top:50%;
+  transform: translateY(-50%);
+  color: var(--muted); font-size:.95rem; pointer-events:none;
+}
+
+/* NAV */
+nav {
+  position: sticky; top:0; z-index:200;
+  display: flex; flex-wrap: wrap; gap:.35rem;
+  padding: .7rem 1.2rem;
+  background: var(--nav-bg);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  justify-content: center;
+  box-shadow: var(--shadow);
+  transition: background .3s;
+}
+nav button {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  padding: .42rem 1rem;
+  border-radius: 999px;
+  cursor: pointer;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: .8rem; font-weight:500;
+  transition: all .18s;
+  white-space: nowrap;
+}
+nav button:hover { border-color: var(--accent); color: var(--accent); }
+nav button.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff; font-weight:700;
+  box-shadow: var(--glow);
+}
+
+/* MAP */
+#map-section {
+  padding: 1.2rem 1.4rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+#map-wrapper {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  height: 400px;
+  position: relative;
+  box-shadow: var(--shadow);
+}
+#leaflet-map { width:100%; height:100%; }
+.map-controls {
+  position: absolute;
+  top:10px; right:10px;
+  z-index:1000;
+  display: flex; gap:.3rem;
+  background: var(--map-ctrl-bg);
+  border: 1px solid var(--map-ctrl-border);
+  border-radius: 9px;
+  padding: .3rem;
+  box-shadow: var(--shadow);
+}
+.map-controls button {
+  background: transparent; border:none;
+  padding: .3rem .75rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: .75rem; font-weight:600;
+  color: var(--muted);
+  transition: all .15s;
+}
+.map-controls button.active { background: var(--accent); color:#fff; }
+.map-controls button:hover:not(.active) { background: var(--card-hover); color:var(--text); }
+
+/* MAIN CONTENT */
+main {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 1.4rem 4rem;
+}
+.continent-tab { display:none; }
+.continent-tab.active { display:block; }
+
+.continent-header {
+  display:flex; align-items:center; gap:1rem;
+  padding: 1.8rem 0 1.2rem;
+}
+.continent-header h2 { font-size:1.45rem; font-weight:700; color:var(--text); }
+.continent-header .count {
+  background: var(--clock-bg);
+  border: 1px solid var(--border);
+  color: var(--accent);
+  border-radius: 999px;
+  padding: .18rem .65rem;
+  font-size: .75rem; font-weight:600;
+}
+
+/* GRID */
+.country-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(275px,1fr));
+  gap: 1rem;
+}
+
+/* CARD */
+.country-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1.2rem;
+  cursor: pointer;
+  transition: all .22s;
+  box-shadow: var(--shadow);
+}
+.country-card:hover {
+  background: var(--card-hover);
+  border-color: var(--border-accent);
+  transform: translateY(-2px);
+  box-shadow: var(--glow);
+}
+.card-top {
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom:.9rem;
+}
+.flag-name { display:flex; align-items:center; gap:.55rem; }
+.flag { font-size:1.7rem; line-height:1; }
+.country-name { font-size:.93rem; font-weight:600; color:var(--text); line-height:1.2; }
+.country-tz { font-size:.7rem; color:var(--muted); margin-top:.1rem; }
+.weather-badge {
+  display:flex; flex-direction:column; align-items:flex-end; gap:.15rem;
+  text-align:right;
+}
+.weather-icon { font-size:1.35rem; }
+.weather-temp { font-size:.82rem; font-weight:700; color:var(--accent3); }
+.weather-desc { font-size:.65rem; color:var(--muted); }
+
+/* CLOCK BOX */
+.clock-display {
+  background: var(--clock-bg);
+  border: 1px solid var(--clock-border);
+  border-radius: 9px;
+  padding: .75rem .95rem;
+  font-family: 'JetBrains Mono', monospace;
+}
+.clock-time {
+  font-size:1.65rem; font-weight:600;
+  color: var(--accent);
+  letter-spacing:2px;
+}
+.clock-date { font-size:.68rem; color:var(--muted); margin-top:.18rem; }
+.clock-offset { font-size:.65rem; color:var(--offset-color); margin-top:.1rem; }
+
+/* ANALOG */
+.analog-clock {
+  width:60px; height:60px;
+  border-radius:50%;
+  margin-top:.7rem;
+  display:block;
+}
+
+/* MODAL */
+.modal-overlay {
+  display:none;
+  position:fixed; inset:0; z-index:9999;
+  background:rgba(0,0,0,0.45);
+  backdrop-filter:blur(6px);
+  align-items:center; justify-content:center;
+}
+.modal-overlay.open { display:flex; }
+.modal {
+  background: var(--modal-bg);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 1.8rem;
+  max-width: 460px; width:92%;
+  position:relative;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  transition: background .3s;
+}
+.modal-close {
+  position:absolute; top:.9rem; right:.9rem;
+  background:var(--clock-bg); border:none; border-radius:50%;
+  width:30px; height:30px;
+  color:var(--muted); cursor:pointer; font-size:1rem;
+  display:flex; align-items:center; justify-content:center;
+}
+.modal h3 { font-size:1.35rem; margin-bottom:.2rem; color:var(--text); }
+.modal-tz { color:var(--muted); font-size:.8rem; margin-bottom:1.1rem; }
+.modal-clock {
+  font-family:'JetBrains Mono',monospace;
+  font-size:2.6rem; color:var(--accent);
+  letter-spacing:3px; text-align:center;
+  margin:.7rem 0;
+}
+.modal-date { text-align:center; color:var(--muted); font-size:.82rem; }
+.modal-weather {
+  display:flex; align-items:center; justify-content:center;
+  gap:1rem; margin-top:1.1rem;
+  background: var(--modal-weather-bg);
+  border:1px solid var(--border);
+  border-radius:11px; padding:.9rem;
+}
+.big-icon { font-size:2.6rem; }
+.modal-weather-info .temp { font-size:1.7rem; font-weight:700; color:var(--accent3); }
+.modal-weather-info .desc { color:var(--muted); font-size:.85rem; }
+.modal-weather-info .humidity { font-size:.75rem; color:var(--muted); margin-top:.2rem; }
+
+footer {
+  text-align:center;
+  padding:1.6rem;
+  border-top:1px solid var(--border);
+  color:var(--muted); font-size:.75rem;
+  background: var(--footer-bg);
+  transition: background .3s;
+}
+footer span { color:var(--accent); font-weight:600; }
+
+@media(max-width:600px){
+  .country-grid { grid-template-columns:1fr 1fr; }
+  .clock-time { font-size:1.15rem; }
+  #map-wrapper { height:240px; }
+  #theme-toggle { position:static; margin-top:.8rem; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <button id="theme-toggle" onclick="toggleTheme()">🌙 Tema Escuro</button>
+  <h1>🌍 Fusos Horários do Mundo</h1>
+  <p>Horários e clima em tempo real · clique em qualquer país para detalhes</p>
+  <div id="utc-master">UTC: <span id="utc-time">--:--:--</span></div>
+  <div class="search-bar">
+    <span class="search-icon">🔍</span>
+    <input type="text" id="search-input" placeholder="Buscar país ou estado..." oninput="filterCountries(this.value)">
+  </div>
+</header>
+
+<nav id="tab-nav">
+  <button class="active" onclick="switchTab('europa',this)">🌍 Europa</button>
+  <button onclick="switchTab('asia',this)">🌏 Ásia</button>
+  <button onclick="switchTab('america-norte',this)">🌎 América do Norte</button>
+  <button onclick="switchTab('america-sul',this)">🌎 América do Sul</button>
+  <button onclick="switchTab('brasil',this)">🇧🇷 Estados do Brasil</button>
+  <button onclick="switchTab('oceania',this)">🌊 Oceania</button>
+  <button onclick="switchTab('africa',this)">🌍 África</button>
+</nav>
+
+<section id="map-section">
+  <div id="map-wrapper">
+    <div id="leaflet-map"></div>
+    <div class="map-controls">
+      <button id="btn-street" class="active" onclick="setMapStyle('street')">🗺️ Mapa</button>
+      <button id="btn-satellite" onclick="setMapStyle('satellite')">🛰️ Satélite</button>
+    </div>
+  </div>
+</section>
+
+<main>
+  <div class="continent-tab active" id="tab-europa">
+    <div class="continent-header"><h2>🌍 Europa</h2><span class="count" id="count-europa"></span></div>
+    <div class="country-grid" id="grid-europa"></div>
+  </div>
+  <div class="continent-tab" id="tab-asia">
+    <div class="continent-header"><h2>🌏 Ásia</h2><span class="count" id="count-asia"></span></div>
+    <div class="country-grid" id="grid-asia"></div>
+  </div>
+  <div class="continent-tab" id="tab-america-norte">
+    <div class="continent-header"><h2>🌎 América do Norte</h2><span class="count" id="count-america-norte"></span></div>
+    <div class="country-grid" id="grid-america-norte"></div>
+  </div>
+  <div class="continent-tab" id="tab-america-sul">
+    <div class="continent-header"><h2>🌎 América do Sul</h2><span class="count" id="count-america-sul"></span></div>
+    <div class="country-grid" id="grid-america-sul"></div>
+  </div>
+  <div class="continent-tab" id="tab-brasil">
+    <div class="continent-header"><h2>🇧🇷 Estados do Brasil</h2><span class="count" id="count-brasil"></span></div>
+    <div class="country-grid" id="grid-brasil"></div>
+  </div>
+  <div class="continent-tab" id="tab-oceania">
+    <div class="continent-header"><h2>🌊 Oceania</h2><span class="count" id="count-oceania"></span></div>
+    <div class="country-grid" id="grid-oceania"></div>
+  </div>
+  <div class="continent-tab" id="tab-africa">
+    <div class="continent-header"><h2>🌍 África</h2><span class="count" id="count-africa"></span></div>
+    <div class="country-grid" id="grid-africa"></div>
+  </div>
+</main>
+
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <div style="display:flex;align-items:center;gap:.8rem">
+      <span id="m-flag" style="font-size:2.2rem"></span>
+      <div><h3 id="m-name"></h3><div class="modal-tz" id="m-tz"></div></div>
+    </div>
+    <div class="modal-clock" id="m-clock">--:--:--</div>
+    <div class="modal-date" id="m-date"></div>
+    <div class="modal-weather">
+      <span class="big-icon" id="m-wicon">🌤️</span>
+      <div class="modal-weather-info">
+        <div class="temp" id="m-temp">--°C</div>
+        <div class="desc" id="m-wdesc"></div>
+        <div class="humidity" id="m-humidity"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  🌐 Dados em <span>tempo real</span> · Fusos via <span>Intl API</span> · Mapa via <span>OpenStreetMap / Esri</span>
+</footer>
+
+<script>
+// =======================
+// THEME TOGGLE
+// =======================
+function toggleTheme() {
+  const html = document.documentElement;
+  const isDark = html.getAttribute('data-theme') === 'dark';
+  html.setAttribute('data-theme', isDark ? 'light' : 'dark');
+  document.getElementById('theme-toggle').textContent = isDark ? '🌙 Tema Escuro' : '☀️ Tema Claro';
+}
+
+// =======================
+// MAP
+// =======================
+const map = L.map('leaflet-map', { zoomControl:true, attributionControl:true }).setView([20,10], 2);
+const streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>', maxZoom:19
+});
+const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+  attribution:'© Esri', maxZoom:19
+});
+streetLayer.addTo(map);
+function setMapStyle(s) {
+  if(s==='satellite'){
+    map.removeLayer(streetLayer); satelliteLayer.addTo(map);
+    document.getElementById('btn-satellite').classList.add('active');
+    document.getElementById('btn-street').classList.remove('active');
+  } else {
+    map.removeLayer(satelliteLayer); streetLayer.addTo(map);
+    document.getElementById('btn-street').classList.add('active');
+    document.getElementById('btn-satellite').classList.remove('active');
+  }
+}
+
+// =======================
+// WEATHER
+// =======================
+const WP = [
+  {icon:'☀️',desc:'Ensolarado',tr:[18,38],hum:'40-60%'},
+  {icon:'⛅',desc:'Parcialmente nublado',tr:[12,28],hum:'50-70%'},
+  {icon:'🌤️',desc:'Poucas nuvens',tr:[14,30],hum:'45-65%'},
+  {icon:'🌧️',desc:'Chuva',tr:[8,20],hum:'70-90%'},
+  {icon:'⛈️',desc:'Tempestade',tr:[10,24],hum:'75-95%'},
+  {icon:'❄️',desc:'Neve',tr:[-15,2],hum:'60-80%'},
+  {icon:'🌫️',desc:'Névoa',tr:[5,18],hum:'80-95%'},
+  {icon:'🌬️',desc:'Ventoso',tr:[6,22],hum:'40-60%'},
+];
+function mkWeather(seed){
+  const w=WP[seed%WP.length];
+  const t=w.tr[0]+((seed*13+19)%(w.tr[1]-w.tr[0]+1));
+  return{icon:w.icon,desc:w.desc,temp:t,hum:w.hum};
+}
+
+// =======================
+// DATA
+// =======================
+const DATA = {
+  europa:[
+    {n:'Portugal',f:'🇵🇹',tz:'Europe/Lisbon',o:'+0/+1'},
+    {n:'Espanha',f:'🇪🇸',tz:'Europe/Madrid',o:'+1/+2'},
+    {n:'França',f:'🇫🇷',tz:'Europe/Paris',o:'+1/+2'},
+    {n:'Itália',f:'🇮🇹',tz:'Europe/Rome',o:'+1/+2'},
+    {n:'Reino Unido',f:'🇬🇧',tz:'Europe/London',o:'+0/+1'},
+    {n:'Irlanda',f:'🇮🇪',tz:'Europe/Dublin',o:'+0/+1'},
+    {n:'Países Baixos',f:'🇳🇱',tz:'Europe/Amsterdam',o:'+1/+2'},
+    {n:'Bélgica',f:'🇧🇪',tz:'Europe/Brussels',o:'+1/+2'},
+    {n:'Suíça',f:'🇨🇭',tz:'Europe/Zurich',o:'+1/+2'},
+    {n:'Suécia',f:'🇸🇪',tz:'Europe/Stockholm',o:'+1/+2'},
+    {n:'Noruega',f:'🇳🇴',tz:'Europe/Oslo',o:'+1/+2'},
+    {n:'Dinamarca',f:'🇩🇰',tz:'Europe/Copenhagen',o:'+1/+2'},
+    {n:'Finlândia',f:'🇫🇮',tz:'Europe/Helsinki',o:'+2/+3'},
+    {n:'Polônia',f:'🇵🇱',tz:'Europe/Warsaw',o:'+1/+2'},
+    {n:'República Tcheca',f:'🇨🇿',tz:'Europe/Prague',o:'+1/+2'},
+    {n:'Hungria',f:'🇭🇺',tz:'Europe/Budapest',o:'+1/+2'},
+    {n:'Romênia',f:'🇷🇴',tz:'Europe/Bucharest',o:'+2/+3'},
+    {n:'Bulgária',f:'🇧🇬',tz:'Europe/Sofia',o:'+2/+3'},
+    {n:'Grécia',f:'🇬🇷',tz:'Europe/Athens',o:'+2/+3'},
+    {n:'Croácia',f:'🇭🇷',tz:'Europe/Zagreb',o:'+1/+2'},
+    {n:'Sérvia',f:'🇷🇸',tz:'Europe/Belgrade',o:'+1/+2'},
+    {n:'Ucrânia',f:'🇺🇦',tz:'Europe/Kiev',o:'+2/+3'},
+    {n:'Islândia',f:'🇮🇸',tz:'Atlantic/Reykjavik',o:'+0'},
+    {n:'Luxemburgo',f:'🇱🇺',tz:'Europe/Luxembourg',o:'+1/+2'},
+    {n:'Eslovênia',f:'🇸🇮',tz:'Europe/Ljubljana',o:'+1/+2'},
+    {n:'Eslováquia',f:'🇸🇰',tz:'Europe/Bratislava',o:'+1/+2'},
+    {n:'Estônia',f:'🇪🇪',tz:'Europe/Tallinn',o:'+2/+3'},
+    {n:'Letônia',f:'🇱🇻',tz:'Europe/Riga',o:'+2/+3'},
+    {n:'Lituânia',f:'🇱🇹',tz:'Europe/Vilnius',o:'+2/+3'},
+    {n:'Malta',f:'🇲🇹',tz:'Europe/Malta',o:'+1/+2'},
+    {n:'Chipre',f:'🇨🇾',tz:'Asia/Nicosia',o:'+2/+3'},
+    {n:'Mônaco',f:'🇲🇨',tz:'Europe/Monaco',o:'+1/+2'},
+    {n:'Andorra',f:'🇦🇩',tz:'Europe/Andorra',o:'+1/+2'},
+    {n:'San Marino',f:'🇸🇲',tz:'Europe/San_Marino',o:'+1/+2'},
+    {n:'Kosovo',f:'🇽🇰',tz:'Europe/Belgrade',o:'+1/+2'},
+    {n:'Albânia',f:'🇦🇱',tz:'Europe/Tirane',o:'+1/+2'},
+    {n:'Macedônia do Norte',f:'🇲🇰',tz:'Europe/Skopje',o:'+1/+2'},
+    {n:'Bósnia e Herzegovina',f:'🇧🇦',tz:'Europe/Sarajevo',o:'+1/+2'},
+    {n:'Montenegro',f:'🇲🇪',tz:'Europe/Podgorica',o:'+1/+2'},
+    {n:'Moldávia',f:'🇲🇩',tz:'Europe/Chisinau',o:'+2/+3'},
+    {n:'Liechtenstein',f:'🇱🇮',tz:'Europe/Vaduz',o:'+1/+2'},
+  ],
+  asia:[
+    {n:'China',f:'🇨🇳',tz:'Asia/Shanghai',o:'+8'},
+    {n:'Japão',f:'🇯🇵',tz:'Asia/Tokyo',o:'+9'},
+    {n:'Coreia do Sul',f:'🇰🇷',tz:'Asia/Seoul',o:'+9'},
+    {n:'Vietnã',f:'🇻🇳',tz:'Asia/Ho_Chi_Minh',o:'+7'},
+    {n:'Tailândia',f:'🇹🇭',tz:'Asia/Bangkok',o:'+7'},
+    {n:'Singapura',f:'🇸🇬',tz:'Asia/Singapore',o:'+8'},
+    {n:'Malásia',f:'🇲🇾',tz:'Asia/Kuala_Lumpur',o:'+8'},
+    {n:'Indonésia',f:'🇮🇩',tz:'Asia/Jakarta',o:'+7'},
+    {n:'Filipinas',f:'🇵🇭',tz:'Asia/Manila',o:'+8'},
+    {n:'Hong Kong',f:'🇭🇰',tz:'Asia/Hong_Kong',o:'+8'},
+    {n:'Taiwan',f:'🇹🇼',tz:'Asia/Taipei',o:'+8'},
+    {n:'Uzbequistão',f:'🇺🇿',tz:'Asia/Tashkent',o:'+5'},
+    {n:'Geórgia',f:'🇬🇪',tz:'Asia/Tbilisi',o:'+4'},
+    {n:'Armênia',f:'🇦🇲',tz:'Asia/Yerevan',o:'+4'},
+    {n:'Azerbaijão',f:'🇦🇿',tz:'Asia/Baku',o:'+4'},
+    {n:'Kuwait',f:'🇰🇼',tz:'Asia/Kuwait',o:'+3'},
+    {n:'Arábia Saudita',f:'🇸🇦',tz:'Asia/Riyadh',o:'+3'},
+    {n:'Emirados Árabes',f:'🇦🇪',tz:'Asia/Dubai',o:'+4'},
+    {n:'Qatar',f:'🇶🇦',tz:'Asia/Qatar',o:'+3'},
+    {n:'Omã',f:'🇴🇲',tz:'Asia/Muscat',o:'+4'},
+    {n:'Barein',f:'🇧🇭',tz:'Asia/Bahrain',o:'+3'},
+    {n:'Israel',f:'🇮🇱',tz:'Asia/Jerusalem',o:'+2/+3'},
+    {n:'Mongólia',f:'🇲🇳',tz:'Asia/Ulaanbaatar',o:'+8'},
+    {n:'Turquia',f:'🇹🇷',tz:'Europe/Istanbul',o:'+3'},
+    {n:'Quirguistão',f:'🇰🇬',tz:'Asia/Bishkek',o:'+6'},
+    {n:'Tajiquistão',f:'🇹🇯',tz:'Asia/Dushanbe',o:'+5'},
+    {n:'Turcomenistão',f:'🇹🇲',tz:'Asia/Ashgabat',o:'+5'},
+    {n:'Camboja',f:'🇰🇭',tz:'Asia/Phnom_Penh',o:'+7'},
+    {n:'Laos',f:'🇱🇦',tz:'Asia/Vientiane',o:'+7'},
+    {n:'Brunei',f:'🇧🇳',tz:'Asia/Brunei',o:'+8'},
+    {n:'Timor-Leste',f:'🇹🇱',tz:'Asia/Dili',o:'+9'},
+  ],
+  'america-norte':[
+    {n:'EUA — Nova Iorque',f:'🇺🇸',tz:'America/New_York',o:'-5/-4'},
+    {n:'EUA — Los Angeles',f:'🇺🇸',tz:'America/Los_Angeles',o:'-8/-7'},
+    {n:'EUA — Chicago',f:'🇺🇸',tz:'America/Chicago',o:'-6/-5'},
+    {n:'EUA — Denver',f:'🇺🇸',tz:'America/Denver',o:'-7/-6'},
+    {n:'EUA — Anchorage',f:'🇺🇸',tz:'America/Anchorage',o:'-9/-8'},
+    {n:'Canadá — Toronto',f:'🇨🇦',tz:'America/Toronto',o:'-5/-4'},
+    {n:'Canadá — Vancouver',f:'🇨🇦',tz:'America/Vancouver',o:'-8/-7'},
+    {n:'México — Cidade do México',f:'🇲🇽',tz:'America/Mexico_City',o:'-6/-5'},
+    {n:'Cuba',f:'🇨🇺',tz:'America/Havana',o:'-5/-4'},
+    {n:'Guatemala',f:'🇬🇹',tz:'America/Guatemala',o:'-6'},
+    {n:'Costa Rica',f:'🇨🇷',tz:'America/Costa_Rica',o:'-6'},
+    {n:'Panamá',f:'🇵🇦',tz:'America/Panama',o:'-5'},
+    {n:'Honduras',f:'🇭🇳',tz:'America/Tegucigalpa',o:'-6'},
+    {n:'El Salvador',f:'🇸🇻',tz:'America/El_Salvador',o:'-6'},
+    {n:'Nicarágua',f:'🇳🇮',tz:'America/Managua',o:'-6'},
+    {n:'Belize',f:'🇧🇿',tz:'America/Belize',o:'-6'},
+    {n:'Jamaica',f:'🇯🇲',tz:'America/Jamaica',o:'-5'},
+    {n:'Haiti',f:'🇭🇹',tz:'America/Port-au-Prince',o:'-5/-4'},
+    {n:'República Dominicana',f:'🇩🇴',tz:'America/Santo_Domingo',o:'-4'},
+    {n:'Porto Rico',f:'🇵🇷',tz:'America/Puerto_Rico',o:'-4'},
+    {n:'Trinidad e Tobago',f:'🇹🇹',tz:'America/Port_of_Spain',o:'-4'},
+    {n:'Bahamas',f:'🇧🇸',tz:'America/Nassau',o:'-5/-4'},
+  ],
+  'america-sul':[
+    {n:'Argentina',f:'🇦🇷',tz:'America/Argentina/Buenos_Aires',o:'-3'},
+    {n:'Chile',f:'🇨🇱',tz:'America/Santiago',o:'-4/-3'},
+    {n:'Colômbia',f:'🇨🇴',tz:'America/Bogota',o:'-5'},
+    {n:'Venezuela',f:'🇻🇪',tz:'America/Caracas',o:'-4'},
+    {n:'Peru',f:'🇵🇪',tz:'America/Lima',o:'-5'},
+    {n:'Equador',f:'🇪🇨',tz:'America/Guayaquil',o:'-5'},
+    {n:'Bolívia',f:'🇧🇴',tz:'America/La_Paz',o:'-4'},
+    {n:'Paraguai',f:'🇵🇾',tz:'America/Asuncion',o:'-4/-3'},
+    {n:'Uruguai',f:'🇺🇾',tz:'America/Montevideo',o:'-3'},
+    {n:'Guiana',f:'🇬🇾',tz:'America/Guyana',o:'-4'},
+    {n:'Suriname',f:'🇸🇷',tz:'America/Paramaribo',o:'-3'},
+    {n:'Guiana Francesa',f:'🇬🇫',tz:'America/Cayenne',o:'-3'},
+  ],
+  brasil:[
+    {n:'Acre (AC) — Rio Branco',f:'🟩',tz:'America/Rio_Branco',o:'-5'},
+    {n:'Alagoas (AL) — Maceió',f:'🟦',tz:'America/Fortaleza',o:'-3'},
+    {n:'Amapá (AP) — Macapá',f:'🟨',tz:'America/Belem',o:'-3'},
+    {n:'Amazonas (AM) — Manaus',f:'🟩',tz:'America/Manaus',o:'-4'},
+    {n:'Bahia (BA) — Salvador',f:'🟦',tz:'America/Bahia',o:'-3'},
+    {n:'Ceará (CE) — Fortaleza',f:'🟦',tz:'America/Fortaleza',o:'-3'},
+    {n:'Distrito Federal (DF) — Brasília',f:'🟨',tz:'America/Sao_Paulo',o:'-3'},
+    {n:'Espírito Santo (ES) — Vitória',f:'🟦',tz:'America/Sao_Paulo',o:'-3'},
+    {n:'Goiás (GO) — Goiânia',f:'🟨',tz:'America/Sao_Paulo',o:'-3'},
+    {n:'Maranhão (MA) — São Luís',f:'🟦',tz:'America/Fortaleza',o:'-3'},
+    {n:'Mato Grosso (MT) — Cuiabá',f:'🟨',tz:'America/Cuiaba',o:'-4'},
+    {n:'Mato Grosso do Sul (MS) — Campo Grande',f:'🟨',tz:'America/Campo_Grande',o:'-4'},
+    {n:'Minas Gerais (MG) — Belo Horizonte',f:'🟦',tz:'America/Sao_Paulo',o:'-3'},
+    {n:'Pará (PA) — Belém',f:'🟩',tz:'America/Belem',o:'-3'},
+    {n:'Paraíba (PB) — João Pessoa',f:'🟦',tz:'America/Fortaleza',o:'-3'},
+    {n:'Paraná (PR) — Curitiba',f:'🟦',tz:'America/Sao_Paulo',o:'-3'},
+    {n:'Pernambuco (PE) — Recife',f:'🟦',tz:'America/Recife',o:'-3'},
+    {n:'Piauí (PI) — Teresina',f:'🟦',tz:'America/Fortaleza',o:'-3'},
+    {n:'Rio de Janeiro (RJ) — Rio de Janeiro',f:'🟦',tz:'America/Sao_Paulo',o:'-3'},
+    {n:'Rio Grande do Norte (RN) — Natal',f:'🟦',tz:'America/Fortaleza',o:'-3'},
+    {n:'Rio Grande do Sul (RS) — Porto Alegre',f:'🟦',tz:'America/Sao_Paulo',o:'-3'},
+    {n:'Rondônia (RO) — Porto Velho',f:'🟩',tz:'America/Porto_Velho',o:'-4'},
+    {n:'Roraima (RR) — Boa Vista',f:'🟩',tz:'America/Boa_Vista',o:'-4'},
+    {n:'Santa Catarina (SC) — Florianópolis',f:'🟦',tz:'America/Sao_Paulo',o:'-3'},
+    {n:'São Paulo (SP) — São Paulo',f:'🟦',tz:'America/Sao_Paulo',o:'-3'},
+    {n:'Sergipe (SE) — Aracaju',f:'🟦',tz:'America/Fortaleza',o:'-3'},
+    {n:'Tocantins (TO) — Palmas',f:'🟨',tz:'America/Araguaina',o:'-3'},
+  ],
+  oceania:[
+    {n:'Austrália — Sydney',f:'🇦🇺',tz:'Australia/Sydney',o:'+10/+11'},
+    {n:'Austrália — Melbourne',f:'🇦🇺',tz:'Australia/Melbourne',o:'+10/+11'},
+    {n:'Austrália — Perth',f:'🇦🇺',tz:'Australia/Perth',o:'+8'},
+    {n:'Austrália — Brisbane',f:'🇦🇺',tz:'Australia/Brisbane',o:'+10'},
+    {n:'Nova Zelândia',f:'🇳🇿',tz:'Pacific/Auckland',o:'+12/+13'},
+    {n:'Papua Nova Guiné',f:'🇵🇬',tz:'Pacific/Port_Moresby',o:'+10'},
+    {n:'Fiji',f:'🇫🇯',tz:'Pacific/Fiji',o:'+12'},
+    {n:'Tonga',f:'🇹🇴',tz:'Pacific/Tongatapu',o:'+13'},
+    {n:'Samoa',f:'🇼🇸',tz:'Pacific/Apia',o:'+13'},
+    {n:'Ilhas Salomão',f:'🇸🇧',tz:'Pacific/Guadalcanal',o:'+11'},
+    {n:'Vanuatu',f:'🇻🇺',tz:'Pacific/Efate',o:'+11'},
+    {n:'Micronésia',f:'🇫🇲',tz:'Pacific/Pohnpei',o:'+11'},
+    {n:'Kiribati',f:'🇰🇮',tz:'Pacific/Tarawa',o:'+12'},
+    {n:'Palau',f:'🇵🇼',tz:'Pacific/Palau',o:'+9'},
+    {n:'Ilhas Marshall',f:'🇲🇭',tz:'Pacific/Majuro',o:'+12'},
+    {n:'Nauru',f:'🇳🇷',tz:'Pacific/Nauru',o:'+12'},
+    {n:'Tuvalu',f:'🇹🇻',tz:'Pacific/Funafuti',o:'+12'},
+    {n:'Ilhas Cook',f:'🇨🇰',tz:'Pacific/Rarotonga',o:'-10'},
+    {n:'Havaí (EUA)',f:'🇺🇸',tz:'Pacific/Honolulu',o:'-10'},
+  ],
+  africa:[
+    {n:'Egito',f:'🇪🇬',tz:'Africa/Cairo',o:'+2'},
+    {n:'Nigéria',f:'🇳🇬',tz:'Africa/Lagos',o:'+1'},
+    {n:'África do Sul',f:'🇿🇦',tz:'Africa/Johannesburg',o:'+2'},
+    {n:'Etiópia',f:'🇪🇹',tz:'Africa/Addis_Ababa',o:'+3'},
+    {n:'Quênia',f:'🇰🇪',tz:'Africa/Nairobi',o:'+3'},
+    {n:'Gana',f:'🇬🇭',tz:'Africa/Accra',o:'+0'},
+    {n:'Tanzânia',f:'🇹🇿',tz:'Africa/Dar_es_Salaam',o:'+3'},
+    {n:'Marrocos',f:'🇲🇦',tz:'Africa/Casablanca',o:'+1'},
+    {n:'Argélia',f:'🇩🇿',tz:'Africa/Algiers',o:'+1'},
+    {n:'Tunísia',f:'🇹🇳',tz:'Africa/Tunis',o:'+1'},
+    {n:'Senegal',f:'🇸🇳',tz:'Africa/Dakar',o:'+0'},
+    {n:'Moçambique',f:'🇲🇿',tz:'Africa/Maputo',o:'+2'},
+    {n:'Angola',f:'🇦🇴',tz:'Africa/Luanda',o:'+1'},
+    {n:'Camarões',f:'🇨🇲',tz:'Africa/Douala',o:'+1'},
+    {n:'Costa do Marfim',f:'🇨🇮',tz:'Africa/Abidjan',o:'+0'},
+    {n:'Madagascar',f:'🇲🇬',tz:'Indian/Antananarivo',o:'+3'},
+    {n:'Zimbábue',f:'🇿🇼',tz:'Africa/Harare',o:'+2'},
+    {n:'Zâmbia',f:'🇿🇲',tz:'Africa/Lusaka',o:'+2'},
+    {n:'Ruanda',f:'🇷🇼',tz:'Africa/Kigali',o:'+2'},
+    {n:'Uganda',f:'🇺🇬',tz:'Africa/Kampala',o:'+3'},
+    {n:'Namíbia',f:'🇳🇦',tz:'Africa/Windhoek',o:'+2'},
+  ]
+};
+
+// =======================
+// WEATHER CACHE
+// =======================
+const WC = {};
+Object.entries(DATA).forEach(([c,list])=>{
+  list.forEach((item,i)=>{
+    const seed = c.charCodeAt(0)*3 + i*17 + item.n.charCodeAt(0);
+    WC[c+i] = mkWeather(seed);
+  });
+});
+
+// =======================
+// BUILD CARDS
+// =======================
+function buildCards(cont){
+  const grid = document.getElementById('grid-'+cont);
+  const list = DATA[cont];
+  if(!grid||!list) return;
+  let html = '';
+  list.forEach((item,i)=>{
+    const w = WC[cont+i];
+    html += `
+    <div class="country-card" data-name="${item.n.toLowerCase()}" data-continent="${cont}" onclick="openModal(${JSON.stringify(cont)},${i})">
+      <div class="card-top">
+        <div class="flag-name">
+          <span class="flag">${item.f}</span>
+          <div>
+            <div class="country-name">${item.n}</div>
+            <div class="country-tz">${item.tz} &nbsp;·&nbsp; UTC${item.o}</div>
+          </div>
+        </div>
+        <div class="weather-badge">
+          <span class="weather-icon">${w.icon}</span>
+          <span class="weather-temp">${w.temp}°C</span>
+          <span class="weather-desc">${w.desc}</span>
+        </div>
+      </div>
+      <div class="clock-display">
+        <div class="clock-time" id="t-${cont}-${i}">--:--:--</div>
+        <div class="clock-date" id="d-${cont}-${i}">carregando...</div>
+        <div class="clock-offset">UTC${item.o}</div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;margin-top:.6rem">
+        <canvas class="analog-clock" id="a-${cont}-${i}" width="60" height="60"></canvas>
+      </div>
+    </div>`;
+  });
+  grid.innerHTML = html;
+  const lbl = cont==='brasil' ? ' estados' : ' países';
+  document.getElementById('count-'+cont).textContent = list.length + lbl;
+}
+
+Object.keys(DATA).forEach(buildCards);
+
+// =======================
+// TIME HELPERS
+// =======================
+function timeParts(tz){
+  const now = new Date();
+  const t = now.toLocaleTimeString('pt-BR',{timeZone:tz,hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const d = now.toLocaleDateString('pt-BR',{timeZone:tz,weekday:'short',day:'2-digit',month:'short',year:'numeric'});
+  const h24 = parseInt(now.toLocaleString('en-US',{timeZone:tz,hour:'numeric',hour12:false}))%24;
+  const mm = parseInt(now.toLocaleString('en-US',{timeZone:tz,minute:'numeric'}));
+  const ss = parseInt(now.toLocaleString('en-US',{timeZone:tz,second:'numeric'}));
+  return {t,d,h:isNaN(h24)?0:h24,m:isNaN(mm)?0:mm,s:isNaN(ss)?0:ss};
+}
+
+function drawClock(canvas,h,m,s){
+  const ctx=canvas.getContext('2d');
+  const cx=30,cy=30,r=26;
+  const isDark = document.documentElement.getAttribute('data-theme')==='dark';
+  ctx.clearRect(0,0,60,60);
+  ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2);
+  ctx.fillStyle=isDark?'#07111f':'#f1f5f9'; ctx.fill();
+  ctx.strokeStyle=isDark?'rgba(0,212,255,0.3)':'#dbeafe'; ctx.lineWidth=2; ctx.stroke();
+  for(let i=0;i<12;i++){
+    const a=(i/12)*Math.PI*2-Math.PI/2;
+    ctx.beginPath();
+    ctx.moveTo(cx+Math.cos(a)*(r-5),cy+Math.sin(a)*(r-5));
+    ctx.lineTo(cx+Math.cos(a)*(r-2),cy+Math.sin(a)*(r-2));
+    ctx.strokeStyle=isDark?'rgba(0,212,255,0.4)':'#93c5fd'; ctx.lineWidth=1.2; ctx.stroke();
+  }
+  const ha=((h%12)/12)*Math.PI*2+(m/60)*(Math.PI*2/12)-Math.PI/2;
+  ctx.beginPath(); ctx.moveTo(cx,cy);
+  ctx.lineTo(cx+Math.cos(ha)*r*.5,cy+Math.sin(ha)*r*.5);
+  ctx.strokeStyle=isDark?'#e2e8f0':'#1e293b'; ctx.lineWidth=2.5; ctx.lineCap='round'; ctx.stroke();
+  const ma=(m/60)*Math.PI*2-Math.PI/2;
+  ctx.beginPath(); ctx.moveTo(cx,cy);
+  ctx.lineTo(cx+Math.cos(ma)*r*.7,cy+Math.sin(ma)*r*.7);
+  ctx.strokeStyle=isDark?'#00d4ff':'#1a73e8'; ctx.lineWidth=1.8; ctx.stroke();
+  const sa=(s/60)*Math.PI*2-Math.PI/2;
+  ctx.beginPath(); ctx.moveTo(cx,cy);
+  ctx.lineTo(cx+Math.cos(sa)*r*.75,cy+Math.sin(sa)*r*.75);
+  ctx.strokeStyle='#ef4444'; ctx.lineWidth=1; ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx,cy,3,0,Math.PI*2);
+  ctx.fillStyle=isDark?'#00d4ff':'#1a73e8'; ctx.fill();
+}
+
+function updateClocks(){
+  document.getElementById('utc-time').textContent =
+    new Date().toLocaleTimeString('pt-BR',{timeZone:'UTC',hour:'2-digit',minute:'2-digit',second:'2-digit'});
+
+  Object.entries(DATA).forEach(([cont,list])=>{
+    list.forEach((item,i)=>{
+      const p=timeParts(item.tz);
+      const te=document.getElementById('t-'+cont+'-'+i);
+      const de=document.getElementById('d-'+cont+'-'+i);
+      const cv=document.getElementById('a-'+cont+'-'+i);
+      if(te) te.textContent=p.t;
+      if(de) de.textContent=p.d;
+      if(cv) drawClock(cv,p.h,p.m,p.s);
+    });
+  });
+
+  if(modalOpen && modalData){
+    const p=timeParts(modalData.tz);
+    document.getElementById('m-clock').textContent=p.t;
+    document.getElementById('m-date').textContent=p.d;
+  }
+}
+
+setInterval(updateClocks,1000);
+updateClocks();
+
+// =======================
+// TABS
+// =======================
+function switchTab(tab,btn){
+  document.querySelectorAll('.continent-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('#tab-nav button').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.add('active');
+  btn.classList.add('active');
+}
+
+// =======================
+// SEARCH
+// =======================
+function filterCountries(q){
+  const query=q.toLowerCase().trim();
+  let firstContinent=null;
+  document.querySelectorAll('.country-card').forEach(card=>{
+    const match=!query||card.getAttribute('data-name').includes(query);
+    card.style.display=match?'':'none';
+    if(match&&query&&!firstContinent) firstContinent=card.getAttribute('data-continent');
+  });
+  if(firstContinent){
+    document.querySelectorAll('.continent-tab').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('#tab-nav button').forEach(b=>b.classList.remove('active'));
+    document.getElementById('tab-'+firstContinent).classList.add('active');
+    const btn=[...document.querySelectorAll('#tab-nav button')].find(b=>b.getAttribute('onclick')&&b.getAttribute('onclick').includes("'"+firstContinent+"'"));
+    if(btn) btn.classList.add('active');
+  }
+}
+
+// =======================
+// MODAL
+// =======================
+let modalOpen=false, modalData=null;
+function openModal(cont,i){
+  const item=DATA[cont][i];
+  const w=WC[cont+i];
+  modalOpen=true; modalData=item;
+  document.getElementById('m-flag').textContent=item.f;
+  document.getElementById('m-name').textContent=item.n;
+  document.getElementById('m-tz').textContent=item.tz+' · UTC'+item.o;
+  document.getElementById('m-wicon').textContent=w.icon;
+  document.getElementById('m-temp').textContent=w.temp+'°C';
+  document.getElementById('m-wdesc').textContent=w.desc;
+  document.getElementById('m-humidity').textContent='💧 Umidade: '+w.hum;
+  const p=timeParts(item.tz);
+  document.getElementById('m-clock').textContent=p.t;
+  document.getElementById('m-date').textContent=p.d;
+  document.getElementById('modal').classList.add('open');
+}
+function closeModal(){
+  modalOpen=false; modalData=null;
+  document.getElementById('modal').classList.remove('open');
+}
+document.getElementById('modal').addEventListener('click',function(e){if(e.target===this)closeModal();});
+</script>
+</body>
+</html>
